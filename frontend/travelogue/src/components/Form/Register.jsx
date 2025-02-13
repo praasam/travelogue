@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
@@ -18,12 +18,21 @@ const RegistrationForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Image Slideshow Logic
+  const images = ["/log2.png", "/log.jpg"]; // Replace with actual image paths
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 7000); // Change every 7 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setUserData({
-      ...userData,
-      [name]: value,
-    });
+    setUserData({ ...userData, [name]: value });
   };
 
   const validate = () => {
@@ -55,25 +64,16 @@ const RegistrationForm = () => {
             password: userData.password,
           }
         );
-        console.log(response);
         toast.success(response.data.msg);
-
-        // navigate to login page
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       } catch (error) {
-        // Check if error.response is defined
         if (error.response) {
-          console.error("Error response:", error.response);
           toast.error(error.response.data.msg);
         } else if (error.request) {
-          // The request was made but no response was received
-          console.error("Error request:", error.request);
           toast.error("Network error: Please try again later.");
         } else {
-          // Something else caused the error
-          console.error("Error:", error.message);
           toast.error("An unexpected error occurred. Please try again.");
         }
       }
@@ -91,13 +91,25 @@ const RegistrationForm = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="flex flex-col md:flex-row bg-white shadow-lg max-w-4xl w-full rounded-lg overflow-hidden my-8">
-        <div className="md:w-1/2 p-8 flex items-center justify-center bg-white">
-          <img
-            src="/login.gif"
-            alt="Register illustration"
-            className="w-full h-auto"
-          />
+        
+        {/* Slideshow Container */}
+        <div className="md:w-1/2 p-8 flex items-center justify-center bg-white relative overflow-hidden">
+          <div
+            className="flex transition-transform duration-1000 ease-in-out"
+            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          >
+            {images.map((img, index) => (
+              <img
+                key={index}
+                src={img}
+                alt={`Slide ${index}`}
+                className="w-full h-auto flex-shrink-0"
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Registration Form */}
         <div className="md:w-1/2 p-8 flex flex-col justify-center">
           <h2 className="text-3xl mb-6 text-center font-semibold text-gray-800">
             Register Here
@@ -108,10 +120,7 @@ const RegistrationForm = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <ToastContainer />
             <div className="mb-4">
-              <label
-                className="block text-gray-700 font-medium mb-2"
-                htmlFor="username"
-              >
+              <label className="block text-gray-700 font-medium mb-2">
                 Username
               </label>
               <input
@@ -119,7 +128,6 @@ const RegistrationForm = () => {
                   errors.username && "border-red-500"
                 }`}
                 type="text"
-                id="username"
                 placeholder="Enter your username"
                 name="username"
                 value={userData.username}
@@ -130,10 +138,7 @@ const RegistrationForm = () => {
               )}
             </div>
             <div className="mb-4">
-              <label
-                className="block text-gray-700 font-medium mb-2"
-                htmlFor="email"
-              >
+              <label className="block text-gray-700 font-medium mb-2">
                 Email
               </label>
               <input
@@ -141,7 +146,6 @@ const RegistrationForm = () => {
                   errors.email && "border-red-500"
                 }`}
                 type="email"
-                id="email"
                 placeholder="Enter your email"
                 name="email"
                 value={userData.email}
@@ -152,10 +156,7 @@ const RegistrationForm = () => {
               )}
             </div>
             <div className="mb-4 relative">
-              <label
-                className="block text-gray-700 font-medium mb-2"
-                htmlFor="password"
-              >
+              <label className="block text-gray-700 font-medium mb-2">
                 Password
               </label>
               <input
@@ -163,7 +164,6 @@ const RegistrationForm = () => {
                   errors.password && "border-red-500"
                 }`}
                 type={showPassword ? "text" : "password"}
-                id="password"
                 placeholder="Enter your password"
                 name="password"
                 value={userData.password}
@@ -173,21 +173,14 @@ const RegistrationForm = () => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 mt-8 cursor-pointer"
                 onClick={togglePasswordVisibility}
               >
-                {showPassword ? (
-                  <FaEyeSlash className="text-gray-500" />
-                ) : (
-                  <FaEye className="text-gray-500" />
-                )}
+                {showPassword ? <FaEyeSlash className="text-gray-500" /> : <FaEye className="text-gray-500" />}
               </div>
               {errors.password && (
                 <div className="text-red-500 text-sm">{errors.password}</div>
               )}
             </div>
             <div className="mb-6 relative">
-              <label
-                className="block text-gray-700 font-medium mb-2"
-                htmlFor="confirm-password"
-              >
+              <label className="block text-gray-700 font-medium mb-2">
                 Confirm Password
               </label>
               <input
@@ -195,7 +188,6 @@ const RegistrationForm = () => {
                   errors.confirmPassword && "border-red-500"
                 }`}
                 type={showConfirmPassword ? "text" : "password"}
-                id="confirm-password"
                 placeholder="Confirm your password"
                 name="confirmPassword"
                 value={userData.confirmPassword}
@@ -205,26 +197,14 @@ const RegistrationForm = () => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 mt-8 cursor-pointer"
                 onClick={toggleConfirmPasswordVisibility}
               >
-                {showConfirmPassword ? (
-                  <FaEyeSlash className="text-gray-500" />
-                ) : (
-                  <FaEye className="text-gray-500" />
-                )}
+                {showConfirmPassword ? <FaEyeSlash className="text-gray-500" /> : <FaEye className="text-gray-500" />}
               </div>
-              {errors.confirmPassword && (
-                <div className="text-red-500 text-sm">
-                  {errors.confirmPassword}
-                </div>
-              )}
             </div>
-            <button
-              className="w-full text-white px-6 py-3 rounded-lg shadow-md transition duration-300"
-              style={{ backgroundColor: "#F0BCCD" }}
-              type="submit"
-            >
+            <button className="w-full text-white px-6 py-3 rounded-lg shadow-md" style={{ backgroundColor: "#8A5647" }}>
               Register
             </button>
           </form>
+
           <p className="mt-4 text-center text-gray-600">
             Already have an account?
             <a
@@ -234,6 +214,7 @@ const RegistrationForm = () => {
               Login here
             </a>
           </p>
+
         </div>
       </div>
     </div>

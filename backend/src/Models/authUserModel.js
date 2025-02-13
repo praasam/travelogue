@@ -11,15 +11,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  role:{
-    type:String,
-    enum:["user", "admin"],
-    default: "user",
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user',
   },
   password: {
     type: String,
     required: true,
   },
+  images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }] // Add this line to link images to users
 });
 
 userSchema.pre('save', async function (next) {

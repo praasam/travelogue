@@ -29,11 +29,11 @@ function NavbarComponent() {
       return (
         <>
           <Link to="/dash" className="text-gray-700 hover:text-[#8A5647]">Home</Link>
-          <Link to="/shop" className="text-gray-700 hover:text-[#8A5647]">Shop</Link>
+          {/* <Link to="/shop" className="text-gray-700 hover:text-[#8A5647]">Shop</Link>
           <Link to="/category" className="text-gray-700 hover:text-[#8A5647]">Category</Link>
           <Link to="/brand" className="text-gray-700 hover:text-[#8A5647]">Brand</Link>
           <Link to="/product" className="text-gray-700 hover:text-[#8A5647]">Product</Link>
-          <Link to="/profile" className="text-gray-700 hover:text-[#8A5647]">All users</Link>
+          <Link to="/profile" className="text-gray-700 hover:text-[#8A5647]">All users</Link> */}
 
         </>
       );
@@ -41,9 +41,9 @@ function NavbarComponent() {
       return (
         <>
           <Link to="/dash" className="text-gray-700 hover:text-[#8A5647]">Home</Link>
-          <Link to="/shop" className="text-gray-700 hover:text-[#8A5647]">Shop</Link>
+          {/* <Link to="/shop" className="text-gray-700 hover:text-[#8A5647]">Shop</Link> */}
           <Link to="/contact" className="text-gray-700 hover:text-[#8A5647]">Contact Us</Link>
-          <Link to="/cart" className="text-gray-700 hover:text-[#8A5647]">Your Cart</Link>
+          {/* <Link to="/cart" className="text-gray-700 hover:text-[#8A5647]">Your Cart</Link> */}
 
         </>
       );

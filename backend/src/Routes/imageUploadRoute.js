@@ -1,3 +1,4 @@
+// In routes/imageUploadRoute.js
 const express = require("express");
 const { upload, uploadImages } = require("../Controllers/imageUploadController"); // Import controller
 

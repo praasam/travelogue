@@ -30,7 +30,7 @@ const uploadImages = async (req, res) => {
 
     // Prepare the image data to be saved
     const uploadedFiles = req.files.map((file) => ({
-      url: `/uploads/${file.filename}`, // Path to the uploaded file
+      images: `/uploads/${file.filename}`, // Path to the uploaded file
       user: userId, // Link the image to the user
     }));
 

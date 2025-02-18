@@ -41,22 +41,22 @@ useEffect(() => {
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     const formData = new FormData();
-
+  
     formData.append("userId", userId);
     files.forEach((file) => formData.append("photos", file));
-
+  
     try {
       const response = await fetch("http://localhost:5000/api/images/upload", {
         method: "POST",
         body: formData,
       });
-
+  
       const data = await response.json();
       console.log("Response from backend:", data);
-
+  
       if (response.ok) {
-        const uploadedUrls = data.images.map((img) => `http://localhost:5000${img.images}`);
-        setPhotos((prevPhotos) => [...prevPhotos, ...uploadedUrls]);
+        // ✅ After successful upload, fetch images again
+        fetchUploadedImages();
       } else {
         console.error("Upload failed:", data.message);
         setErrorMessage(data.message);
@@ -66,29 +66,30 @@ useEffect(() => {
       setErrorMessage("Error uploading files");
     }
   };
+  
 
   // Handle image deletion
-  const removePhoto = async (indexToRemove, imageUrl) => {
-    try {
-      const response = await fetch("http://localhost:5000/api/images/delete", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, imageUrl }),
-      });
+  // const removePhoto = async (indexToRemove, imageUrl) => {
+  //   try {
+  //     const response = await fetch("http://localhost:5000/api/images/delete", {
+  //       method: "DELETE",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ userId, imageUrl }),
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (response.ok) {
-        setPhotos((prevPhotos) => prevPhotos.filter((_, index) => index !== indexToRemove));
-      } else {
-        console.error("Error deleting photo:", data.message);
-        setErrorMessage(data.message || "Error deleting photo");
-      }
-    } catch (error) {
-      console.error("Error deleting photo:", error);
-      setErrorMessage("Error deleting photo");
-    }
-  };
+  //     if (response.ok) {
+  //       setPhotos((prevPhotos) => prevPhotos.filter((_, index) => index !== indexToRemove));
+  //     } else {
+  //       console.error("Error deleting photo:", data.message);
+  //       setErrorMessage(data.message || "Error deleting photo");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error deleting photo:", error);
+  //     setErrorMessage("Error deleting photo");
+  //   }
+  // };
 
   return (
     <div className="h-screen flex flex-col">
@@ -127,12 +128,12 @@ useEffect(() => {
                       alt={`Uploaded ${index}`}
                       className="w-32 h-32 object-cover rounded-lg"
                     />
-                    <button
+                    {/* <button
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
-                      onClick={() => removePhoto(index, photo)}
+                      // onClick={() => removePhoto(index, photo)}
                     >
                       ×
-                    </button>
+                    </button> */}
                   </div>
                 ))}
               </div>

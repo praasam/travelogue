@@ -30,10 +30,9 @@ const uploadImages = async (req, res) => {
 
     // Prepare the image data to be saved
     const uploadedFiles = req.files.map((file) => ({
-      images: file.filename, // Store only the filename
+      images: `/uploads/${file.filename}`, // Prepend the '/uploads/' path
       user: userId, // Ensure userId is stored correctly
-  }));
-  
+    }));
 
     // Save images in the database
     const savedImages = await Image.insertMany(uploadedFiles);
@@ -41,7 +40,7 @@ const uploadImages = async (req, res) => {
     // Respond with the URLs of the uploaded images
     res.status(201).json({
       message: "Images uploaded and saved successfully",
-      images: savedImages,
+      images: savedImages.map(img => img.images), // Return only the image URLs
     });
   } catch (error) {
     console.error("Upload Error:", error);
@@ -49,27 +48,31 @@ const uploadImages = async (req, res) => {
   }
 };
 
+
 const getUserImages = async (req, res) => {
   try {
-      const { userId } = req.params;
+    const { userId } = req.params;
 
-      if (!userId) {
-          return res.status(400).json({ message: "User ID is required" });
-      }
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
 
-      const images = await Image.find({ user: userId });
+    const images = await Image.find({ user: userId });
 
-      if (!images.length) {
-          return res.status(404).json({ message: "No images found" });
-      }
+    if (!images.length) {
+      return res.status(404).json({ message: "No images found" });
+    }
 
-      // Return image filenames instead of full paths
-      res.status(200).json({ images });
+    // Return full image path
+    const imageUrls = images.map(img => `/uploads/${img.images}`); // Ensure '/uploads/' prefix is added
+
+    res.status(200).json({ images: imageUrls });
   } catch (error) {
-      console.error("Error fetching images:", error);
-      res.status(500).json({ message: "Error fetching images", error: error.message });
+    console.error("Error fetching images:", error);
+    res.status(500).json({ message: "Error fetching images", error: error.message });
   }
 };
+
 
 
 module.exports = { upload, uploadImages, getUserImages };

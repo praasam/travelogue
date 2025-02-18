@@ -26,7 +26,8 @@ router.get("/:userId", async (req, res) => {
       }
   
       // Send back image URLs
-      res.json({ images: userImages.map((img) => img.images) });
+      res.json({ images: userImages.flatMap((img) => img.images) });
+
     } catch (error) {
       console.error("Error fetching images:", error);
       res.status(500).json({ message: "Internal Server Error" });

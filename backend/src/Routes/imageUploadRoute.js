@@ -1,6 +1,6 @@
 // In routes/imageUploadRoute.js
 const express = require("express");
-const { upload, uploadImages } = require("../Controllers/imageUploadController"); // Import controller
+const { upload, uploadImages, deleteImage } = require("../Controllers/imageUploadController"); // Import controller
 const ImageModel = require('../Models/imageModel'); // Adjust the path based on your project structure
 const mongoose = require("mongoose"); // ✅ Add this line
 
@@ -34,6 +34,24 @@ router.get("/:userId", async (req, res) => {
     }
   });
   
+  // DELETE route for deleting images
+  router.delete("/delete", async (req, res) => {
+    try {
+      const { userId, imageUrl } = req.body;
+  
+      if (!userId || !imageUrl) {
+        return res.status(400).json({ message: "User ID and Image URL are required" });
+      }
+  
+      // Call deleteImage to handle actual image deletion logic
+      await deleteImage(userId, imageUrl);
+  
+      res.status(200).json({ message: "Image deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      res.status(500).json({ message: "Error deleting image" });
+    }
+  });
   
 
 

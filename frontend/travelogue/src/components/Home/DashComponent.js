@@ -3,11 +3,11 @@ import { useState, useEffect, useCallback } from "react";
 export default function DashboardComponent() {
   const [photos, setPhotos] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
-  // const [images, setImages] = useState([]);
 
   // Retrieve user ID from localStorage
   const userId = localStorage.getItem("id");
 
+  // Fetch uploaded images
   const fetchUploadedImages = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/images/${userId}`);
@@ -26,16 +26,13 @@ export default function DashboardComponent() {
       console.error("Error fetching images:", error);
     }
   }, [userId]);
-  
-  
-  
-  
-useEffect(() => {
-  if (userId) {
-    fetchUploadedImages(); // Ensure this function is actually invoked
-  }
-}, [userId, fetchUploadedImages]);
 
+  // Fetch images when the component mounts or userId changes
+  useEffect(() => {
+    if (userId) {
+      fetchUploadedImages();
+    }
+  }, [userId, fetchUploadedImages]);
 
   // Handle image upload
   const handleFileUpload = async (event) => {
@@ -55,7 +52,7 @@ useEffect(() => {
       console.log("Response from backend:", data);
   
       if (response.ok) {
-        // ✅ After successful upload, fetch images again
+        // After successful upload, fetch images again
         fetchUploadedImages();
       } else {
         console.error("Upload failed:", data.message);
@@ -66,30 +63,32 @@ useEffect(() => {
       setErrorMessage("Error uploading files");
     }
   };
-  
 
   // Handle image deletion
-  // const removePhoto = async (indexToRemove, imageUrl) => {
-  //   try {
-  //     const response = await fetch("http://localhost:5000/api/images/delete", {
-  //       method: "DELETE",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ userId, imageUrl }),
-  //     });
+  const handleDeleteImage = async (imageUrl) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/images/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, imageUrl }),
+      });
 
-  //     const data = await response.json();
+      const data = await response.json();
 
-  //     if (response.ok) {
-  //       setPhotos((prevPhotos) => prevPhotos.filter((_, index) => index !== indexToRemove));
-  //     } else {
-  //       console.error("Error deleting photo:", data.message);
-  //       setErrorMessage(data.message || "Error deleting photo");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error deleting photo:", error);
-  //     setErrorMessage("Error deleting photo");
-  //   }
-  // };
+      if (response.ok) {
+        // After successful deletion, update the state
+        setPhotos((prevPhotos) => prevPhotos.filter((photo) => photo !== imageUrl));
+      } else {
+        console.error("Error deleting image:", data.message);
+        setErrorMessage(data.message || "Error deleting image");
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      setErrorMessage("Error deleting image");
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -108,6 +107,31 @@ useEffect(() => {
               onChange={handleFileUpload}
             />
           </label>
+
+          {/* Display Uploaded Images Below the Button */}
+          {photos.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium">Uploaded Images:</h3>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {photos.map((photo, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={photo}
+                      alt={`Uploaded ${index}`}
+                      className="w-16 h-16 object-cover rounded-md"
+                    />
+                    {/* Delete button */}
+                    <button
+                      onClick={() => handleDeleteImage(photo)}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </aside>
 
         {/* Content Area */}
@@ -120,23 +144,6 @@ useEffect(() => {
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <div className="grid grid-cols-3 gap-4 p-4">
-                {photos.map((photo, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={photo}
-                      alt={`Uploaded ${index}`}
-                      className="w-32 h-32 object-cover rounded-lg"
-                    />
-                    {/* <button
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
-                      // onClick={() => removePhoto(index, photo)}
-                    >
-                      ×
-                    </button> */}
-                  </div>
-                ))}
-              </div>
               {photos.length > 1 && (
                 <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
                   Create a Reel

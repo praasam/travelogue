@@ -1,6 +1,7 @@
 const multer = require("multer");
 const path = require("path");
 const Image = require("../Models/imageModel"); // Import Image Model
+const fs = require("fs");
 
 // Multer storage configuration
 const storage = multer.diskStorage({
@@ -74,7 +75,51 @@ const getUserImages = async (req, res) => {
 };
 
 
+// Delete image from database and filesystem
+const deleteImage = async (userId, imageUrl) => {
+  try {
+    console.log("Image URL received:", imageUrl); // Log the URL being passed to delete
+    
+    // Extract the image filename
+    const imageFileName = imageUrl.split("/uploads/")[1];
+    console.log("Extracted image filename:", imageFileName);
 
-module.exports = { upload, uploadImages, getUserImages };
+    // Check the images stored in the database for the given userId
+    const imagesInDb = await Image.find({ user: userId });
+    console.log("Images stored in the database:", imagesInDb);
+
+    // Delete the image from the database
+    const deletedImage = await Image.findOneAndDelete({ user: userId, images: `/uploads/${imageFileName}` });
+    console.log("Deleted image from database:", deletedImage);
+    
+    if (!deletedImage) {
+      throw new Error("Image not found in database");
+    }
+
+    // If deletion from DB is successful, remove the file from the filesystem
+    const filePath = path.join(__dirname, "..", "uploads", imageFileName);
+console.log("File path for deletion:", filePath);
+
+if (fs.existsSync(filePath)) {
+  try {
+    fs.unlinkSync(filePath);
+    console.log("File deleted successfully.");
+  } catch (error) {
+    console.error("Error deleting image:", error);
+  }
+} else {
+  console.log(`File not found at path: ${filePath}`);
+}
+  } catch (error) {
+    console.error("Error deleting image:", error);
+    throw error;
+  }
+};
+
+
+
+
+
+module.exports = { upload, uploadImages, getUserImages, deleteImage};
 
 

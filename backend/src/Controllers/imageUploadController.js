@@ -30,9 +30,10 @@ const uploadImages = async (req, res) => {
 
     // Prepare the image data to be saved
     const uploadedFiles = req.files.map((file) => ({
-      images: `/uploads/${file.filename}`, // Path to the uploaded file
-      user: userId, // Link the image to the user
-    }));
+      images: file.filename, // Store only the filename
+      user: userId, // Ensure userId is stored correctly
+  }));
+  
 
     // Save images in the database
     const savedImages = await Image.insertMany(uploadedFiles);
@@ -48,4 +49,29 @@ const uploadImages = async (req, res) => {
   }
 };
 
-module.exports = { upload, uploadImages };
+const getUserImages = async (req, res) => {
+  try {
+      const { userId } = req.params;
+
+      if (!userId) {
+          return res.status(400).json({ message: "User ID is required" });
+      }
+
+      const images = await Image.find({ user: userId });
+
+      if (!images.length) {
+          return res.status(404).json({ message: "No images found" });
+      }
+
+      // Return image filenames instead of full paths
+      res.status(200).json({ images });
+  } catch (error) {
+      console.error("Error fetching images:", error);
+      res.status(500).json({ message: "Error fetching images", error: error.message });
+  }
+};
+
+
+module.exports = { upload, uploadImages, getUserImages };
+
+

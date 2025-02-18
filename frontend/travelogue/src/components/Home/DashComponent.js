@@ -1,17 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export default function DashboardComponent() {
   const [photos, setPhotos] = useState([]);
   const [errorMessage, setErrorMessage] = useState(null);
+  // const [images, setImages] = useState([]);
 
   // Retrieve user ID from localStorage
-  const userId = localStorage.getItem("id"); // Make sure the user is logged in and userId is available in localStorage
+  const userId = localStorage.getItem("id");
 
+  const fetchUploadedImages = useCallback(async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/images/${userId}`);
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      console.log("API Response:", data);
+  
+      if (data.images.length > 0) {
+        setPhotos(data.images.map(img => `http://localhost:5000${img}`));
+      }
+    } catch (error) {
+      console.error("Error fetching images:", error);
+    }
+  }, [userId]);
+  
+  
+  
+  
+useEffect(() => {
+  if (userId) {
+    fetchUploadedImages(); // Ensure this function is actually invoked
+  }
+}, [userId, fetchUploadedImages]);
+
+
+  // Handle image upload
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     const formData = new FormData();
-  
-    formData.append("userId", userId); // Add userId from localStorage
+
+    formData.append("userId", userId);
     files.forEach((file) => formData.append("photos", file));
 
     try {
@@ -24,36 +55,29 @@ export default function DashboardComponent() {
       console.log("Response from backend:", data);
 
       if (response.ok) {
-        // Check if data.images is valid
-        const validUrls = Array.isArray(data.images)
-          ? data.images.filter((url) => url.startsWith("http"))
-          : [];
-
-        setPhotos((prevPhotos) => [
-          ...prevPhotos,
-          ...files.map((file) => URL.createObjectURL(file)), // Local preview
-          ...validUrls, // Only add valid backend URLs
-        ]);
+        const uploadedUrls = data.images.map((img) => `http://localhost:5000${img.images}`);
+        setPhotos((prevPhotos) => [...prevPhotos, ...uploadedUrls]);
       } else {
-        // setErrorMessage(Upload failed: ${data.message || "Unknown error"});
-                console.error("Upload failed:", data.message);
+        console.error("Upload failed:", data.message);
+        setErrorMessage(data.message);
       }
     } catch (error) {
-      // setErrorMessage(Error uploading files: ${error.message});
       console.error("Error uploading files:", error);
+      setErrorMessage("Error uploading files");
     }
   };
 
+  // Handle image deletion
   const removePhoto = async (indexToRemove, imageUrl) => {
     try {
       const response = await fetch("http://localhost:5000/api/images/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, imageUrl })
+        body: JSON.stringify({ userId, imageUrl }),
       });
-  
+
       const data = await response.json();
-      
+
       if (response.ok) {
         setPhotos((prevPhotos) => prevPhotos.filter((_, index) => index !== indexToRemove));
       } else {
@@ -99,13 +123,13 @@ export default function DashboardComponent() {
                 {photos.map((photo, index) => (
                   <div key={index} className="relative">
                     <img
-                      src={typeof photo === "string" ? photo : URL.createObjectURL(photo)}
+                      src={photo}
                       alt={`Uploaded ${index}`}
                       className="w-32 h-32 object-cover rounded-lg"
                     />
                     <button
                       className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
-                      onClick={() => removePhoto(index, photo)} // Pass index and imageUrl
+                      onClick={() => removePhoto(index, photo)}
                     >
                       ×
                     </button>

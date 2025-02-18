@@ -27,7 +27,7 @@ app.use("/uploads", express.static("uploads"));
 app.use("/auth", authRoute);
 app.use("/api/sentiment", sentimentRoute);
 // app.use("/api/reels", reelRoute);
-app.use("/api/images", imageUploadRoute);
+app.use("/api/images", imageUploadRoute); // 👈 This should match the frontend request
 
 // Global Error Handler
 app.use((err, req, res, next) => {

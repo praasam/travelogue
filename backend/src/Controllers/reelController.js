@@ -1,34 +1,61 @@
-const express = require("express");
-const { exec } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid'); // Generate unique temp folder names
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+ffmpeg.setFfmpegPath(ffmpegPath);
 
-const router = express.Router();
+exports.createReel = async (req, res) => {
+  try {
+    const { userId, selectedImageUrls } = req.body;
 
-router.post("/create-reel", (req, res) => {
-    const { images, audio } = req.body;
-
-    if (!images || !audio) {
-        return res.status(400).json({ error: "Images and audio are required!" });
+    if (!userId || !selectedImageUrls || selectedImageUrls.length < 2) {
+      return res.status(400).json({ message: "At least 2 images are required to create a reel" });
     }
 
-    // Convert images array to a string for Python
-    const imagesList = images.join(" ");
-    const pythonScript = path.join(__dirname, "../../model/reel_creator.py");
+    // Create a temp directory for processing images
+    const tempDir = path.join(__dirname, `../../uploads/temp-${uuidv4()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
 
-    // Run the Python script
-    exec(`python ${pythonScript} ${imagesList} ${audio}`, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error: ${error.message}`);
-            return res.status(500).json({ error: "Failed to create reel!" });
-        }
-        if (stderr) {
-            console.error(`stderr: ${stderr}`);
-            return res.status(500).json({ error: "Error in script execution!" });
-        }
-
-        res.json({ message: "Reel created successfully!", output: stdout.trim() });
+    // Copy images to temp directory with sequential names
+    selectedImageUrls.forEach((url, index) => {
+      const originalPath = path.resolve(__dirname, '../../uploads/', path.basename(url));
+      const newPath = path.join(tempDir, `img${index + 1}.jpg`);
+      
+      if (fs.existsSync(originalPath)) {
+        fs.copyFileSync(originalPath, newPath);
+      } else {
+        throw new Error(`Image does not exist: ${originalPath}`);
+      }
     });
-});
 
-module.exports = router;
+    // Define output path
+    const videoPath = path.resolve(__dirname, `../../uploads/reels/reel-${Date.now()}.mp4`);
+
+    // Process images as a slideshow video
+    ffmpeg()
+      .input(path.join(tempDir, 'img%d.jpg')) // Use numerical sequence
+      .inputOptions('-framerate 1') // 1 second per image
+      .outputOptions([
+        '-c:v libx264',      // Encode in H.264 format
+        '-pix_fmt yuv420p',  // Ensure compatibility
+        '-r 30',             // 30 FPS for smoothness
+        '-t', `${selectedImageUrls.length}` // Set duration dynamically
+      ])
+      .output(videoPath)
+      .on('end', () => {
+        console.log('Video generation complete:', videoPath);
+        fs.rmSync(tempDir, { recursive: true, force: true }); // Clean up temp files
+        res.json({ reelUrl: `http://localhost:5000/uploads/reels/${path.basename(videoPath)}` });
+      })
+      .on('error', (err) => {
+        console.error('Error generating video:', err);
+        res.status(500).json({ message: "Error generating reel video" });
+      })
+      .run();
+
+  } catch (error) {
+    console.error("Error creating reel:", error);
+    res.status(500).json({ message: error.message });
+  }
+};

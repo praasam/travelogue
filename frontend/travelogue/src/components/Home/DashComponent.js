@@ -1,58 +1,56 @@
+// frontend/src/DashboardComponent.js
 import { useState, useEffect, useCallback } from "react";
 
 export default function DashboardComponent() {
   const [photos, setPhotos] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);  // Define selectedFiles state
   const [errorMessage, setErrorMessage] = useState(null);
+  const [reelUrl, setReelUrl] = useState(null); // Store the created reel URL
 
-  // Retrieve user ID from localStorage
   const userId = localStorage.getItem("id");
 
-  // Fetch uploaded images
   const fetchUploadedImages = useCallback(async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/images/${userId}`);
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       console.log("API Response:", data);
-  
+
       if (data.images.length > 0) {
-        setPhotos(data.images.map(img => `http://localhost:5000${img}`));
+        setPhotos(data.images.map((img) => `http://localhost:5000${img}`));
       }
     } catch (error) {
       console.error("Error fetching images:", error);
     }
   }, [userId]);
 
-  // Fetch images when the component mounts or userId changes
   useEffect(() => {
     if (userId) {
       fetchUploadedImages();
     }
   }, [userId, fetchUploadedImages]);
 
-  // Handle image upload
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     const formData = new FormData();
-  
+
     formData.append("userId", userId);
     files.forEach((file) => formData.append("photos", file));
-  
+
     try {
       const response = await fetch("http://localhost:5000/api/images/upload", {
         method: "POST",
         body: formData,
       });
-  
+
       const data = await response.json();
       console.log("Response from backend:", data);
-  
+
       if (response.ok) {
-        // After successful upload, fetch images again
         fetchUploadedImages();
       } else {
         console.error("Upload failed:", data.message);
@@ -64,7 +62,59 @@ export default function DashboardComponent() {
     }
   };
 
-  // Handle image deletion
+  const handleImageSelection = (imageFile) => {
+    setSelectedFiles((prevSelectedFiles) => {
+      if (prevSelectedFiles.includes(imageFile)) {
+        return prevSelectedFiles.filter((file) => file !== imageFile); // Deselect file
+      } else {
+        return [...prevSelectedFiles, imageFile]; // Select file
+      }
+    });
+  };
+
+  const handleCreateReel = async () => {
+    if (selectedFiles.length < 2) {
+      setErrorMessage("At least 2 images are required to create a reel.");
+      return;
+    }
+  
+    console.log("Selected files:", selectedFiles);
+    
+    // Make sure selectedFiles is an array of image URLs
+    const selectedImageUrls = selectedFiles.map((file) => file);  // Assuming selectedFiles are URLs directly
+  
+    console.log("Selected Image URLs:", selectedImageUrls);
+  
+    // Send the image URLs as a JSON body, not as FormData
+    const requestBody = {
+      userId: "someUserId",  // Replace with actual userId if needed
+      selectedImageUrls: selectedImageUrls,
+    };
+  
+    try {
+      const response = await fetch("http://localhost:5000/api/reel/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",  // Make sure Content-Type is set as application/json
+        },
+        body: JSON.stringify(requestBody),  // Send the request body as a JSON string
+      });
+  
+      const data = await response.json();
+      if (response.ok) {
+        setReelUrl(data.reelUrl);
+      } else {
+        console.error("Error creating reel:", data.message);
+        setErrorMessage(data.message);
+      }
+    } catch (error) {
+      console.error("Error creating reel:", error);
+      setErrorMessage("Error creating reel");
+    }
+  };
+  
+  
+
   const handleDeleteImage = async (imageUrl) => {
     try {
       const response = await fetch("http://localhost:5000/api/images/delete", {
@@ -78,8 +128,10 @@ export default function DashboardComponent() {
       const data = await response.json();
 
       if (response.ok) {
-        // After successful deletion, update the state
         setPhotos((prevPhotos) => prevPhotos.filter((photo) => photo !== imageUrl));
+        setSelectedFiles((prevSelectedFiles) =>
+          prevSelectedFiles.filter((file) => file !== imageUrl)
+        );
       } else {
         console.error("Error deleting image:", data.message);
         setErrorMessage(data.message || "Error deleting image");
@@ -92,9 +144,7 @@ export default function DashboardComponent() {
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Main Content */}
       <div className="flex flex-grow bg-blue-50">
-        {/* Sidebar */}
         <aside className="w-1/4 bg-white p-4 shadow-md">
           <h2 className="text-lg font-semibold mb-4">Select Photos</h2>
           <label className="w-full p-3 text-left bg-blue-100 rounded-lg hover:bg-blue-200 cursor-pointer block text-center">
@@ -108,7 +158,6 @@ export default function DashboardComponent() {
             />
           </label>
 
-          {/* Display Uploaded Images Below the Button */}
           {photos.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-medium">Uploaded Images:</h3>
@@ -118,15 +167,17 @@ export default function DashboardComponent() {
                     <img
                       src={photo}
                       alt={`Uploaded ${index}`}
-                      className="w-16 h-16 object-cover rounded-md"
+                      className={`w-16 h-16 object-cover rounded-md ${selectedFiles.includes(photo) ? "border-2 border-blue-500" : ""}`}
+                      onClick={() => handleImageSelection(photo)}  // Update to handle file selection
                     />
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDeleteImage(photo)}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
-                    >
-                      ×
-                    </button>
+                    {selectedFiles.includes(photo) && (
+                      <button
+                        onClick={() => handleDeleteImage(photo)}
+                        className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-2 py-1 text-xs"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -134,7 +185,6 @@ export default function DashboardComponent() {
           )}
         </aside>
 
-        {/* Content Area */}
         <main className="flex-grow flex flex-col items-center justify-center">
           {errorMessage && <div className="text-red-500 text-center">{errorMessage}</div>}
           {photos.length === 0 ? (
@@ -144,10 +194,20 @@ export default function DashboardComponent() {
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              {photos.length > 1 && (
-                <button className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+              {selectedFiles.length >= 2 && (
+                <button
+                  onClick={handleCreateReel}
+                  className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                >
                   Create a Reel
                 </button>
+              )}
+              {reelUrl && (
+                <div className="mt-4">
+                  <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500">
+                    View Reel
+                  </a>
+                </div>
               )}
             </div>
           )}

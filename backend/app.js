@@ -6,8 +6,8 @@ const connectDb = require("./src/Config/db");
 // Import Routes
 const authRoute = require("./src/Routes/authRoute");
 const sentimentRoute = require("./src/Routes/sentimentRoute");
-// const reelRoute = require("./src/Routes/reelRoute"); // Ensure it's inside Routes folder
 const imageUploadRoute = require("./src/Routes/imageUploadRoute");
+const reelRoute = require("./src/Routes/reelRoute");
 
 const app = express();
 const PORT = process.env.PORT || 5000; // Default fallback port
@@ -26,7 +26,7 @@ app.use("/uploads", express.static("uploads"));
 // Routes
 app.use("/auth", authRoute);
 app.use("/api/sentiment", sentimentRoute);
-// app.use("/api/reels", reelRoute);
+app.use('/api/reel', reelRoute);
 app.use("/api/images", imageUploadRoute); // 👈 This should match the frontend request
 
 // Global Error Handler

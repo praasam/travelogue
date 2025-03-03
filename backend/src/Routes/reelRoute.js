@@ -1,9 +1,12 @@
 const express = require("express");
-const { createReel } = require("../Controllers/reelController");
+const { createReel, getUserReels } = require("../Controllers/reelController");
 
 const router = express.Router();
 
-// Route for creating a reel (no file upload needed here)
-router.post("/create", createReel);  // Call createReel controller to generate the video
+// Route for creating a reel
+router.post("/create", createReel);
+
+// GET route to fetch reels for a specific user
+router.get("/:userId", getUserReels);
 
 module.exports = router;

@@ -1,12 +1,15 @@
-// frontend/src/DashboardComponent.js
 import { useState, useEffect, useCallback } from "react";
 
 export default function DashboardComponent() {
   const [photos, setPhotos] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);  // Define selectedFiles state
+  const [selectedFiles, setSelectedFiles] = useState([]); // Define selectedFiles state
   const [errorMessage, setErrorMessage] = useState(null);
   const [reelUrl, setReelUrl] = useState(null); // Store the created reel URL
-
+  const [reels, setReels] = useState([]); // Store the user's reels
+  const [isProcessing, setIsProcessing] = useState(false); // Track if reel is being processed
+  const [sentiment, setSentiment] = useState(""); // Track sentiment value
+  // const [analysisSentiment, setAnalysisSentiment] = useState(null); // Track sentiment analysis result
+  const [musicTrack, setMusicTrack] = useState(null); // Track music suggestion
   const userId = localStorage.getItem("id");
 
   const fetchUploadedImages = useCallback(async () => {
@@ -28,11 +31,29 @@ export default function DashboardComponent() {
     }
   }, [userId]);
 
+  const fetchUserReels = useCallback(async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/reel/${userId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data);
+
+      setReels(data.reels); // Assuming the API returns the reel paths
+    } catch (error) {
+      console.error("Error fetching reels:", error);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (userId) {
       fetchUploadedImages();
+      fetchUserReels();
     }
-  }, [userId, fetchUploadedImages]);
+  }, [userId, fetchUploadedImages, fetchUserReels]);
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
@@ -62,60 +83,83 @@ export default function DashboardComponent() {
     }
   };
 
-  const handleImageSelection = (imageFile) => {
+  const handleImageSelection = (imageUrl) => {
     setSelectedFiles((prevSelectedFiles) => {
-      if (prevSelectedFiles.includes(imageFile)) {
-        return prevSelectedFiles.filter((file) => file !== imageFile); // Deselect file
+      if (prevSelectedFiles.includes(imageUrl)) {
+        return prevSelectedFiles.filter((file) => file !== imageUrl); // Deselect file
       } else {
-        return [...prevSelectedFiles, imageFile]; // Select file
+        return [...prevSelectedFiles, imageUrl]; // Select file
       }
     });
   };
 
   const handleCreateReel = async () => {
     if (selectedFiles.length < 2) {
-      setErrorMessage("At least 2 images are required to create a reel.");
-      return;
+        setErrorMessage("At least 2 images are required to create a reel.");
+        return;
     }
-  
-    console.log("Selected files:", selectedFiles);
-    
-    // Make sure selectedFiles is an array of image URLs
-    const selectedImageUrls = selectedFiles.map((file) => file);  // Assuming selectedFiles are URLs directly
-  
-    console.log("Selected Image URLs:", selectedImageUrls);
-  
-    // Send the image URLs as a JSON body, not as FormData
-    const requestBody = {
-      userId: "someUserId",  // Replace with actual userId if needed
-      selectedImageUrls: selectedImageUrls,
-    };
-  
-    try {
-      const response = await fetch("http://localhost:5000/api/reel/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",  // Make sure Content-Type is set as application/json
-        },
-        body: JSON.stringify(requestBody),  // Send the request body as a JSON string
-      });
-  
-      const data = await response.json();
-      if (response.ok) {
-        setReelUrl(data.reelUrl);
-      } else {
-        console.error("Error creating reel:", data.message);
-        setErrorMessage(data.message);
-      }
-    } catch (error) {
-      console.error("Error creating reel:", error);
-      setErrorMessage("Error creating reel");
-    }
-  };
-  
-  
 
-  const handleDeleteImage = async (imageUrl) => {
+    console.log("Selected files:", selectedFiles);
+
+    setIsProcessing(true);
+
+    // Make sure sentiment is set before creating the reel
+    if (!sentiment) {
+        setErrorMessage("Please select a sentiment.");
+        return;
+    }
+
+    const requestBody = {
+        userId: userId,  // Use the actual userId from localStorage
+        selectedImageUrls: selectedFiles,
+        sentiment: sentiment, // Send the sentiment to backend to suggest music
+    };
+
+    try {
+        const response = await fetch("http://localhost:5000/api/reel/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            setReelUrl(data.reelUrl);
+            fetchUserReels(); // Fetch updated list of reels after creating a new one
+        } else {
+            console.error("Error creating reel:", data.message);
+            setErrorMessage(data.message);
+        }
+    } catch (error) {
+        console.error("Error creating reel:", error);
+        setErrorMessage("Error creating reel");
+    } finally {
+        setIsProcessing(false);
+    }
+};
+
+const handleSubmitSentiment = async () => {
+    try {
+        const res = await fetch("http://localhost:5000/api/music/suggest-music", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sentiment }),
+        });
+
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+
+        const data = await res.json();
+        const musicUrl = data.suggestedTracks[0]; // Full URL of the suggested music
+
+        setMusicTrack(musicUrl); // Set full URL to be used in the reel
+    } catch (error) {
+        console.error("Error fetching music:", error);
+    }
+};
+
+const handleDeleteImage = async (imageUrl) => {
     try {
       const response = await fetch("http://localhost:5000/api/images/delete", {
         method: "DELETE",
@@ -140,7 +184,7 @@ export default function DashboardComponent() {
       console.error("Error deleting image:", error);
       setErrorMessage("Error deleting image");
     }
-  };
+};
 
   return (
     <div className="h-screen flex flex-col">
@@ -157,7 +201,6 @@ export default function DashboardComponent() {
               onChange={handleFileUpload}
             />
           </label>
-
           {photos.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-medium">Uploaded Images:</h3>
@@ -168,7 +211,7 @@ export default function DashboardComponent() {
                       src={photo}
                       alt={`Uploaded ${index}`}
                       className={`w-16 h-16 object-cover rounded-md ${selectedFiles.includes(photo) ? "border-2 border-blue-500" : ""}`}
-                      onClick={() => handleImageSelection(photo)}  // Update to handle file selection
+                      onClick={() => handleImageSelection(photo)}
                     />
                     {selectedFiles.includes(photo) && (
                       <button
@@ -194,15 +237,50 @@ export default function DashboardComponent() {
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              {selectedFiles.length >= 2 && (
-                <button
-                  onClick={handleCreateReel}
-                  className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                >
-                  Create a Reel
-                </button>
+              {selectedFiles.length >= 2 && !isProcessing && (
+                <>
+                  <div className="mt-4">
+                    <select
+                      id="sentiment"
+                      value={sentiment}
+                      onChange={(e) => setSentiment(e.target.value)}
+                      className="p-2 border rounded"
+                    >
+                      <option value="">Select Sentiment</option>
+                      <option value="Happy">Happy</option>
+                      <option value="Sad">Sad</option>
+                      <option value="Angry">Angry</option>
+                      <option value="Neutral">Neutral</option>
+                    </select>
+                    <button onClick={handleSubmitSentiment} className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                      Submit Sentiment
+                    </button>
+
+                    {musicTrack && (
+  <div>
+    <h3>Suggested Music:</h3>
+    <audio controls>
+    <source src={musicTrack} type="audio/mp3" />
+    Your browser does not support the audio tag.
+</audio>
+
+
+  </div>
+)}
+
+
+
+
+                    <button onClick={handleCreateReel} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+                      Create Reel
+                    </button>
+                  </div>
+                </>
               )}
-              {reelUrl && (
+              {isProcessing && (
+                <div className="mt-4 text-center text-gray-500">Processing your reel...</div>
+              )}
+              {reelUrl && !isProcessing && (
                 <div className="mt-4">
                   <a href={reelUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500">
                     View Reel
@@ -212,6 +290,33 @@ export default function DashboardComponent() {
             </div>
           )}
         </main>
+
+        <aside className="w-1/4 bg-white p-4 shadow-md">
+          <h2 className="text-lg font-semibold mb-4">Your Reels</h2>
+          <div className="flex flex-wrap gap-4 mt-2">
+            {reels.map((reel, index) => (
+              <div key={index} className="w-full sm:w-1/2 lg:w-1/4 p-2">
+                {reel.reelPath.endsWith(".mp4") || reel.reelPath.endsWith(".mov") ? (
+                  <a href={`http://localhost:5000${reel.reelPath}`} target="_blank" rel="noopener noreferrer">
+                    <video className="w-full h-auto object-cover rounded-lg" controls>
+                      <source src={`http://localhost:5000${reel.reelPath}`} type="video/mp4" />
+                      <source src={`http://localhost:5000${reel.reelPath}`} type="video/ogg" />
+                      <p>Your browser does not support the video tag.</p>
+                    </video>
+                  </a>
+                ) : (
+                  <a href={`http://localhost:5000${reel.reelPath}`} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={`http://localhost:5000${reel.reelPath}`}
+                      alt={`Reel ${index}`}
+                      className="w-full h-auto object-cover rounded-lg"
+                    />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
     </div>
   );

@@ -97,19 +97,20 @@ const deleteImage = async (userId, imageUrl) => {
     }
 
     // If deletion from DB is successful, remove the file from the filesystem
-    const filePath = path.join(__dirname, "..", "uploads", imageFileName);
-console.log("File path for deletion:", filePath);
+    const filePath = path.resolve(__dirname, "../../uploads", imageFileName);
+console.log("Attempting to delete file at path:", filePath);
 
-if (fs.existsSync(filePath)) {
-  try {
-    fs.unlinkSync(filePath);
-    console.log("File deleted successfully.");
-  } catch (error) {
-    console.error("Error deleting image:", error);
-  }
-} else {
-  console.log(`File not found at path: ${filePath}`);
-}
+        if (fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+        console.log("File deleted successfully.");
+      } catch (error) {
+        console.error("Error deleting image:", error);
+      }
+    } else {
+      console.log(`File not found at path: ${filePath}`);
+    }
+    
   } catch (error) {
     console.error("Error deleting image:", error);
     throw error;

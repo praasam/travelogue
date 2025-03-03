@@ -2,12 +2,14 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const connectDb = require("./src/Config/db");
+const path = require("path");
 
 // Import Routes
 const authRoute = require("./src/Routes/authRoute");
 const sentimentRoute = require("./src/Routes/sentimentRoute");
 const imageUploadRoute = require("./src/Routes/imageUploadRoute");
 const reelRoute = require("./src/Routes/reelRoute");
+const musicRoutes = require("./src/Routes/musicRoute");
 
 const app = express();
 const PORT = process.env.PORT || 5000; // Default fallback port
@@ -28,6 +30,11 @@ app.use("/auth", authRoute);
 app.use("/api/sentiment", sentimentRoute);
 app.use('/api/reel', reelRoute);
 app.use("/api/images", imageUploadRoute); // 👈 This should match the frontend request
+app.use("/api/music", musicRoutes);
+
+// Serve static music files
+app.use("/music", express.static(path.join(__dirname, "src/music")));
+
 
 // Global Error Handler
 app.use((err, req, res, next) => {

@@ -2,9 +2,9 @@
 
 const express = require("express");
 const router = express.Router();
-const { suggestMusic } = require("../Controllers/musicController");
+const musicController = require("../Controllers/musicController");
 
 // Define the POST route for music suggestion
-router.post("/suggest-music", suggestMusic);
+router.post("/suggest-music", musicController.suggestMusic);
 
 module.exports = router;

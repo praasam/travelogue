@@ -5,17 +5,18 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const ffmpegPath = require("@ffmpeg-installer/ffmpeg").path;
 const Reel = require("../Models/reelModel"); // Import Reel model
-const sentimentMusicMap = require("../utils/sentimentMusicMap"); // Add a module to map sentiments to music
+const sentimentMusicMap = require("../utils/sentimentMusicMap"); // Map sentiment to music
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// Function to create a reel video with selected images and music
 exports.createReel = async (req, res) => {
     try {
-        const { userId, selectedImageUrls, sentiment } = req.body;
+        const { userId, selectedImageUrls, sentiment, selectedMusic } = req.body;
 
-        // Validate userId and sentiment
-        if (!userId) {
-            return res.status(400).json({ message: "UserId is required" });
+        // Validate user input
+        if (!userId || !selectedImageUrls || selectedImageUrls.length < 2) {
+            return res.status(400).json({ message: "UserId and at least 2 images are required to create a reel" });
         }
 
         let objectIdUserId;
@@ -25,18 +26,25 @@ exports.createReel = async (req, res) => {
             return res.status(400).json({ message: "Invalid userId format" });
         }
 
-        if (!selectedImageUrls || selectedImageUrls.length < 2) {
-            return res.status(400).json({ message: "At least 2 images are required to create a reel" });
+        // Determine which music to use based on sentiment or user selection
+        let musicFile;
+        if (!selectedMusic) {
+            // Use sentiment to determine music if not selected
+            musicFile = sentimentMusicMap[sentiment];
+            if (!musicFile) {
+                return res.status(400).json({ message: "No music found for this sentiment" });
+            }
+        } else {
+            // Use the selected music file
+            musicFile = selectedMusic;
         }
 
-        if (!sentiment) {
-            return res.status(400).json({ message: "Sentiment is required to suggest music" });
-        }
+        // Construct the path for the selected music track
+        const musicPath = path.resolve(__dirname, `../../src/music/${musicFile}`);
 
-        // Get the music suggestion based on sentiment
-        const musicTrack = sentimentMusicMap[sentiment];
-        if (!musicTrack) {
-            return res.status(400).json({ message: "No music found for the selected sentiment" });
+        // Ensure that the selected music file exists
+        if (!fs.existsSync(musicPath)) {
+            return res.status(400).json({ message: `Music file not found: ${musicFile}` });
         }
 
         // Create a temporary directory for processing images
@@ -56,23 +64,20 @@ exports.createReel = async (req, res) => {
             }
         });
 
-        // Define output path for the reel
+        // Define the path for the final reel video
         const reelFilename = `reel-${Date.now()}.mp4`;
         const videoPath = path.resolve(__dirname, `../../uploads/reels/${reelFilename}`);
-
-        // Define path for the music track (located in backend/src/music)
-        const musicPath = path.resolve(__dirname, `../../src/music/${musicTrack}`);
 
         // Process images into a slideshow video with the selected music
         ffmpeg()
             .input(path.join(tempDir, "img%d.jpg"))
             .inputOptions("-framerate 1")
-            .input(musicPath)  // Add music track to the video
+            .input(musicPath)  // Use the selected music
             .outputOptions([
                 "-c:v libx264",
                 "-pix_fmt yuv420p",
                 "-r 30",
-                `-t ${selectedImageUrls.length}`,
+                `-t ${selectedImageUrls.length}`, // Set duration based on the number of images
                 "-c:a aac",  // Audio codec
                 "-strict experimental",  // Allows experimental audio encoding
             ])
@@ -80,13 +85,13 @@ exports.createReel = async (req, res) => {
             .on("end", async () => {
                 console.log("✅ Video generation complete:", videoPath);
 
-                // Cleanup temp directory
+                // Clean up temp directory
                 fs.rmSync(tempDir, { recursive: true, force: true });
 
                 try {
                     // Save reel to MongoDB
                     const newReel = new Reel({
-                        userId: objectIdUserId, // Use converted ObjectId
+                        userId: objectIdUserId,
                         reelPath: `/uploads/reels/${reelFilename}`,
                         createdAt: new Date(),
                     });
@@ -102,7 +107,6 @@ exports.createReel = async (req, res) => {
             })
             .on("error", (err) => {
                 console.error("❌ Error generating video:", err);
-                // Clean up temp directory on error
                 fs.rmSync(tempDir, { recursive: true, force: true });
                 return res.status(500).json({ message: "Error generating reel video" });
             })
@@ -115,7 +119,6 @@ exports.createReel = async (req, res) => {
 };
 
 // Function to get reels for a specific user
-// Fetch the reels for the specific user
 exports.getUserReels = async (req, res) => {
   try {
       const { userId } = req.params;
@@ -152,4 +155,3 @@ exports.getUserReels = async (req, res) => {
       return res.status(500).json({ message: "Error fetching reels" });
   }
 };
-

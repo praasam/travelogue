@@ -48,7 +48,7 @@ const LoginComponent = () => {
         );
 
         if (response.data.token) {
-          localStorage.setItem("token", response.data.token);
+          localStorage.setItem("token", response.data.token);  // Saving token in localStorage
           localStorage.setItem("role", response.data.user.role);
           localStorage.setItem("id", response.data.id);
 

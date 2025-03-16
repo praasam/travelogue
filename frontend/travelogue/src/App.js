@@ -5,6 +5,8 @@ import Login from './components/Form/Login';
 import Register from './components/Form/Register';
 import DashboardComponent from './components/Home/DashComponent';
 import NavbarComponent from './components/Navbar/NavbarComponent'
+// import UserProfile from './components/Profile/ProfileComponent';
+import ReelComponent from './components/Home/ReelComponent';
 
 function App() {
   return (
@@ -15,7 +17,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dash" element={<DashboardComponent />} />
-        
+        {/* <Route path="/profile" element={<UserProfile />} /> */}
+        <Route path="/reels" element={<ReelComponent />} />
       </Routes>
     </Router>
   );

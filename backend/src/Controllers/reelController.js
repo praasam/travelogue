@@ -93,6 +93,7 @@ exports.createReel = async (req, res) => {
                     const newReel = new Reel({
                         userId: objectIdUserId,
                         reelPath: `/uploads/reels/${reelFilename}`,
+                        musicFile: musicFile, // Add the music file used
                         createdAt: new Date(),
                     });
 

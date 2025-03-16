@@ -5,7 +5,6 @@ export default function DashboardComponent() {
   const [selectedFiles, setSelectedFiles] = useState([]); // Define selectedFiles state
   const [errorMessage, setErrorMessage] = useState(null);
   const [reelUrl, setReelUrl] = useState(null); // Store the created reel URL
-  const [reels, setReels] = useState([]); // Store the user's reels
   const [isProcessing, setIsProcessing] = useState(false); // Track if reel is being processed
   const [sentiment, setSentiment] = useState(""); // Track sentiment value
   const [musicTrack, setMusicTrack] = useState(null); // Track music suggestion
@@ -28,26 +27,13 @@ export default function DashboardComponent() {
     }
   }, [userId]);
 
-  const fetchUserReels = useCallback(async () => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/reel/${userId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("API Response:", data);
-      setReels(data.reels); // Assuming the API returns the reel paths
-    } catch (error) {
-      console.error("Error fetching reels:", error);
-    }
-  }, [userId]);
+
 
   useEffect(() => {
     if (userId) {
       fetchUploadedImages();
-      fetchUserReels();
     }
-  }, [userId, fetchUploadedImages, fetchUserReels]);
+  }, [userId, fetchUploadedImages]);
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
@@ -123,7 +109,6 @@ export default function DashboardComponent() {
       const data = await response.json();
       if (response.ok) {
         setReelUrl(data.reelUrl);
-        fetchUserReels(); // Fetch updated list of reels after creating a new one
       } else {
         console.error("Error creating reel:", data.message);
         setErrorMessage(data.message);
@@ -133,10 +118,7 @@ export default function DashboardComponent() {
       setErrorMessage("Error creating reel");
     }
   };
-  
-  
-  
-  
+
   const handleSubmitSentiment = async () => {
     const sentimentLower = sentiment.toLowerCase(); // Convert sentiment to lowercase
     console.log("Sentiment being sent:", sentimentLower); // Debugging the value being sent
@@ -167,10 +149,6 @@ export default function DashboardComponent() {
       setErrorMessage("Error fetching music: " + error.message); // Display the error message
     }
   };
-  
-  
-  
-
 
   const handleDeleteImage = async (imageUrl) => {
     try {
@@ -334,32 +312,7 @@ export default function DashboardComponent() {
           )}
         </main>
 
-        <aside className="w-1/4 bg-white p-4 shadow-md">
-          <h2 className="text-lg font-semibold mb-4">Your Reels</h2>
-          <div className="flex flex-wrap gap-4 mt-2">
-            {reels.map((reel, index) => (
-              <div key={index} className="w-full sm:w-1/2 lg:w-1/4 p-2">
-                {reel.reelPath.endsWith(".mp4") || reel.reelPath.endsWith(".mov") ? (
-                  <a href={`http://localhost:5000${reel.reelPath}`} target="_blank" rel="noopener noreferrer">
-                    <video className="w-full h-auto object-cover rounded-lg" controls>
-                      <source src={`http://localhost:5000${reel.reelPath}`} type="video/mp4" />
-                      <source src={`http://localhost:5000${reel.reelPath}`} type="video/ogg" />
-                      <p>Your browser does not support the video tag.</p>
-                    </video>
-                  </a>
-                ) : (
-                  <a href={`http://localhost:5000${reel.reelPath}`} target="_blank" rel="noopener noreferrer">
-                    <img
-                      src={`http://localhost:5000${reel.reelPath}`}
-                      alt={`Reel ${index}`}
-                      className="w-full h-auto object-cover rounded-lg"
-                    />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </aside>
+
       </div>
     </div>
   );

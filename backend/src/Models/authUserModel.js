@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  images: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Image' }] // Add this line to link images to users
+  profilePicture: { type: String, default: '' }, // Add profile picture field
 });
 
 userSchema.pre('save', async function (next) {

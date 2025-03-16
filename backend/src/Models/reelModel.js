@@ -1,10 +1,31 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const ReelSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'authusers', required: true },
-    reelPath: { type: String, required: true },
-    musicFile: { type: String, required: true },  // Add this field to store music file name
-    createdAt: { type: Date, default: Date.now }
+const reelSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: "User"
+  },
+  reelPath: {
+    type: String,
+    required: true
+  },
+  musicFile: {
+    type: String,
+    required: true
+  },
+  imageDurations: [
+    {
+      url: String,
+      duration: Number
+    }
+  ],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
-module.exports = mongoose.model('Reel', ReelSchema);
+const Reel = mongoose.model("Reel", reelSchema);
+
+module.exports = Reel;

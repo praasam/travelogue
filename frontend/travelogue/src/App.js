@@ -3,10 +3,10 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LandingComponent from './components/Home/LandingComponent';
 import Login from './components/Form/Login';
 import Register from './components/Form/Register';
-import DashboardComponent from './components/Home/DashComponent';
 import NavbarComponent from './components/Navbar/NavbarComponent'
 // import UserProfile from './components/Profile/ProfileComponent';
 import ReelComponent from './components/Home/ReelComponent';
+import DashboardComponent from './components/Dashboard/DashComponent';
 
 function App() {
   return (

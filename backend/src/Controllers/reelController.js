@@ -12,7 +12,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // Function to create a reel video with selected images and music
 exports.createReel = async (req, res) => {
     try {
-        const { userId, selectedImages, sentiment, selectedMusic } = req.body;
+        const { userId, selectedImages, sentiment, selectedMusic, audioTrim } = req.body;
 
         // Validate user input
         if (!userId || !selectedImages || selectedImages.length < 2) {
@@ -46,6 +46,34 @@ exports.createReel = async (req, res) => {
         if (!fs.existsSync(musicPath)) {
             return res.status(400).json({ message: `Music file not found: ${musicFile}` });
         }
+
+        // Handle audio trimming (if any)
+        // Handle audio trimming (if any)
+let finalMusicPath = musicPath;
+if (audioTrim && audioTrim.startTime !== undefined && audioTrim.duration !== undefined) {
+    const trimmedMusicFile = `trimmed_${uuidv4()}_${musicFile}`;
+    const trimmedMusicDir = path.join(__dirname, `../../uploads/temp-${uuidv4()}`);
+    fs.mkdirSync(trimmedMusicDir, { recursive: true }); // Ensure temp dir exists
+    const trimmedMusicPath = path.join(trimmedMusicDir, trimmedMusicFile);
+
+    await new Promise((resolve, reject) => {
+        ffmpeg(musicPath)
+            .setStartTime(audioTrim.startTime)
+            .setDuration(audioTrim.duration)
+            .output(trimmedMusicPath)
+            .on("end", () => {
+                console.log("✅ Trimmed audio file created:", trimmedMusicPath);
+                finalMusicPath = trimmedMusicPath; // Ensure the trimmed music is used
+                resolve();
+            })
+            .on("error", (err) => {
+                console.error("❌ Error trimming music:", err);
+                reject(err);
+            })
+            .run();
+    });
+}
+
 
         // Create a temporary directory for processing images
         const tempDir = path.join(__dirname, `../../uploads/temp-${uuidv4()}`);
@@ -88,58 +116,61 @@ exports.createReel = async (req, res) => {
 
         // Use concat demuxer for precise duration control
         ffmpeg()
-            .input(inputFile)
-            .inputOptions(['-f concat', '-safe 0'])
-            .input(musicPath)
-            .outputOptions([
-                '-c:v libx264',
-                '-pix_fmt yuv420p',
-                '-r 30',
-                '-c:a aac',
-                '-shortest', // End when the shortest input ends
-                '-strict experimental'
-            ])
-            .output(videoPath)
-            .on("end", async () => {
-                console.log("✅ Video generation complete:", videoPath);
+    .input(inputFile)
+    .inputOptions(['-f concat', '-safe 0'])
+    .input(finalMusicPath)  // ✅ Use the trimmed audio
+    .outputOptions([
+        '-c:v libx264',
+        '-pix_fmt yuv420p',
+        '-r 30',
+        '-c:a aac',
+        '-shortest', // ✅ Ensures video stops when either video or music ends
+        '-strict experimental'
+    ])
+    .output(videoPath)
+    .on("end", async () => {
+        console.log("✅ Video generation complete with trimmed audio:", videoPath);
 
-                // Clean up temp directory
-                fs.rmSync(tempDir, { recursive: true, force: true });
+        // Clean up temp directory
+        fs.rmSync(tempDir, { recursive: true, force: true });
 
-                try {
-                    // Save reel to MongoDB with image durations
-                    const newReel = new Reel({
-                        userId: objectIdUserId,
-                        reelPath: `/uploads/reels/${reelFilename}`,
-                        musicFile: musicFile,
-                        imageDurations: selectedImages.map(img => ({
-                            url: path.basename(img.url),
-                            duration: img.duration || 2.0
-                        })),
-                        createdAt: new Date(),
-                    });
+        try {
+            // Save reel to MongoDB with trimmed audio
+            const newReel = new Reel({
+                userId: objectIdUserId,
+                reelPath: `/uploads/reels/${reelFilename}`,
+                musicFile: musicFile,
+                trimmedMusicPath: finalMusicPath, // ✅ Save trimmed music path
+                imageDurations: selectedImages.map(img => ({
+                    url: path.basename(img.url),
+                    duration: img.duration || 2.0
+                })),
+                createdAt: new Date(),
+            });
 
-                    await newReel.save();
-                    console.log("✅ Reel saved to database:", newReel);
+            await newReel.save();
+            console.log("✅ Reel saved to database:", newReel);
 
-                    return res.json({ reelUrl: `http://localhost:5000/uploads/reels/${reelFilename}` });
-                } catch (dbError) {
-                    console.error("❌ Error saving reel to database:", dbError);
-                    return res.status(500).json({ message: "Error saving reel to database" });
-                }
-            })
-            .on("error", (err) => {
-                console.error("❌ Error generating video:", err);
-                fs.rmSync(tempDir, { recursive: true, force: true });
-                return res.status(500).json({ message: "Error generating reel video: " + err.message });
-            })
-            .run();
+            return res.json({ reelUrl: `http://localhost:5000/uploads/reels/${reelFilename}` });
+        } catch (dbError) {
+            console.error("❌ Error saving reel to database:", dbError);
+            return res.status(500).json({ message: "Error saving reel to database" });
+        }
+    })
+    .on("error", (err) => {
+        console.error("❌ Error generating video:", err);
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        return res.status(500).json({ message: "Error generating reel video: " + err.message });
+    })
+    .run();
+
 
     } catch (error) {
         console.error("❌ Error creating reel:", error);
         return res.status(500).json({ message: error.message });
     }
 };
+
 
 // Function to get reels for a specific user
 exports.getUserReels = async (req, res) => {

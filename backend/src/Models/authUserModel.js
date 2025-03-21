@@ -13,15 +13,14 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
     default: 'user',
   },
   password: {
     type: String,
     required: true,
   },
-  profilePicture: { type: String, default: '' }, // Add profile picture field
-});
+}, { timestamps: true }); // Enables createdAt and updatedAt fields
+
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {

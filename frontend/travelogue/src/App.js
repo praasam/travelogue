@@ -7,6 +7,8 @@ import NavbarComponent from './components/Navbar/NavbarComponent'
 // import UserProfile from './components/Profile/ProfileComponent';
 import ReelComponent from './components/Home/ReelComponent';
 import DashboardComponent from './components/Dashboard/DashComponent';
+import ProfileComponent from './components/Profile/ProfileComponent';
+import ChangePasswordComponent from './components/Profile/ChangePassword';
 
 function App() {
   return (
@@ -17,8 +19,13 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dash" element={<DashboardComponent />} />
-        {/* <Route path="/profile" element={<UserProfile />} /> */}
         <Route path="/reels" element={<ReelComponent />} />
+        <Route path="/profile" element={<ProfileComponent userId="me" />} />
+          {/* Route for viewing any user's profile */}
+          <Route path="/profile/:userId" element={<ProfileComponent />} />
+          <Route path="/password" element={<ChangePasswordComponent />} />
+
+          
       </Routes>
     </Router>
   );

@@ -9,21 +9,30 @@ function ReelCreator({
   setReelUrl,
   setErrorMessage,
   imageDurations,
-  trimmedAudioInfo, // New prop to handle trimmed audio info
+  trimmedAudioInfo,
 }) {
   const [processingStatus, setProcessingStatus] = useState("");
-  const [isProcessing] = useState(false);
+  const [isProcessingState, setIsProcessingState] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const convertToMinutes = (seconds, isDuration = false) => {
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return isDuration ? `${minutes}m ${secs}s` : `${minutes}:${secs.toString().padStart(2, "0")} min`;
   };
-  
 
   const handleCreateReel = async () => {
-    if (selectedFiles.length < 2) {
-      setErrorMessage("At least 2 images are required to create a reel.");
+    if (selectedFiles.length < 2 || selectedFiles.length > 10) {
+      setErrorMessage("You must select between 2 and 10 images.");
+      return;
+    }
+
+    const totalDuration = selectedFiles.reduce((acc, url) => {
+      return acc + (imageDurations[url] || 2.0);
+    }, 0);
+
+    if (totalDuration < 5 || totalDuration > 20) {
+      setErrorMessage("The total reel duration must be between 5 and 20 seconds.");
       return;
     }
 
@@ -37,32 +46,38 @@ function ReelCreator({
       return;
     }
 
+    setIsProcessingState(true);
     setIsProcessing(true);
     setProcessingStatus("Preparing images and audio...");
+    setProgress(10);
 
     const selectedImages = selectedFiles.map((url) => ({
       url,
-      duration: imageDurations[url] || 2.0, // Use default or specified duration
+      duration: imageDurations[url] || 2.0,
     }));
 
-    const audioTrimData = trimmedAudioInfo ? {
-      startTime: trimmedAudioInfo.startTime,
-      endTime: trimmedAudioInfo.endTime,
-      duration: trimmedAudioInfo.duration,
-    } : null;
+    const audioTrimData = trimmedAudioInfo
+      ? {
+          startTime: trimmedAudioInfo.startTime,
+          endTime: trimmedAudioInfo.endTime,
+          duration: trimmedAudioInfo.duration,
+        }
+      : null;
 
-    console.log("Sending audio trim data:", audioTrimData); // Log for debugging
+    console.log("Sending audio trim data:", audioTrimData);
 
     const requestBody = {
       userId: userId,
       selectedImages: selectedImages,
       sentiment: sentiment.toLowerCase(),
       selectedMusic: selectedAudio,
-      audioTrim: audioTrimData, // Send trimming data if available
+      audioTrim: audioTrimData,
     };
 
     try {
       setProcessingStatus("Creating reel...");
+      setProgress(30);
+
       const response = await fetch("http://localhost:5000/api/reel/create", {
         method: "POST",
         headers: {
@@ -71,18 +86,22 @@ function ReelCreator({
         body: JSON.stringify(requestBody),
       });
 
+      setProgress(90);
       const data = await response.json();
+      setProgress(100);
+      setIsProcessingState(false);
       setIsProcessing(false);
       setProcessingStatus("");
 
       if (response.ok) {
         setReelUrl(data.reelUrl);
-        setErrorMessage(null);
+        setErrorMessage("");
       } else {
         console.error("Error creating reel:", data.message);
         setErrorMessage(data.message);
       }
     } catch (error) {
+      setIsProcessingState(false);
       setIsProcessing(false);
       setProcessingStatus("");
       console.error("Error creating reel:", error);
@@ -91,29 +110,37 @@ function ReelCreator({
   };
 
   return (
-    <div className="mt-4">
+    <div className="mt-6 w-full max-w-md mx-auto">
       <button
         onClick={handleCreateReel}
-        disabled={isProcessing}
-        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md disabled:bg-gray-400"
+        disabled={isProcessingState}
+        className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md disabled:bg-gray-400 font-semibold text-lg"
       >
-        {isProcessing ? "Creating Reel..." : "Create Reel"}
+        {isProcessingState ? "Creating Reel..." : "Create Reel"}
       </button>
 
-      {processingStatus && (
-        <div className="mt-2 text-sm text-gray-600">{processingStatus}</div>
+      {isProcessingState && (
+        <div className="mt-4">
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div
+              className="bg-purple-600 h-2.5 rounded-full transition-all duration-300 ease-in-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <p className="mt-2 text-sm text-gray-600">{processingStatus}</p>
+        </div>
       )}
 
       {trimmedAudioInfo && (
-  <div className="mt-2 text-xs text-gray-500">
-    Using trimmed audio:{" "}
-    {convertToMinutes(trimmedAudioInfo.startTime)} to{" "}
-    {convertToMinutes(trimmedAudioInfo.endTime)} (Duration:{" "}
-    {convertToMinutes(trimmedAudioInfo.duration, true)})
-  </div>
-)}
+        <div className="mt-2 text-xs text-gray-500">
+          Using trimmed audio:{" "}
+          {convertToMinutes(trimmedAudioInfo.startTime)} to{" "}
+          {convertToMinutes(trimmedAudioInfo.endTime)} (Duration:{" "}
+          {convertToMinutes(trimmedAudioInfo.duration, true)})
+        </div>
+      )}
     </div>
   );
 }
 
-export default ReelCreator;
+export default ReelCreator; 

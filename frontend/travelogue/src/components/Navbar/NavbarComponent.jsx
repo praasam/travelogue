@@ -36,6 +36,7 @@ function NavbarComponent() {
         <>
           <Link to="/dash" className="text-gray-700 hover:text-[#8A5647]">Home</Link>
           <Link to="/profile" className="text-gray-700 hover:text-[#8A5647]">Profile</Link>
+          <Link to="/password" className="text-gray-700 hover:text-[#8A5647]">Change Password</Link>
           <Link to="/reels" className="text-gray-700 hover:text-[#8A5647]">Your Reels</Link>
         </>
       );

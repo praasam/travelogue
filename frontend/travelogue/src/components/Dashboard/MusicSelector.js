@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import MusicTrimmer from "./MusicTrimmer";
 
+
 function MusicSelector({
   sentiment,
   setSentiment,
@@ -15,6 +16,8 @@ function MusicSelector({
   const [tempSelectedAudio, setTempSelectedAudio] = useState(null);
   const [currentTrimInfo, setCurrentTrimInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDurationPrompt, setShowDurationPrompt] = useState(false);
+  const [videoDuration, setVideoDuration] = useState("");
 
   useEffect(() => {
     if (currentTrimInfo) {
@@ -24,7 +27,7 @@ function MusicSelector({
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (showTrimmer) {
+    if (showTrimmer || showDurationPrompt) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
@@ -34,7 +37,7 @@ function MusicSelector({
     return () => {
       document.body.style.overflow = 'auto';
     };
-  }, [showTrimmer]);
+  }, [showTrimmer, showDurationPrompt]);
 
   const handleSubmitSentiment = async () => {
     const sentimentLower = sentiment.toLowerCase();
@@ -45,13 +48,22 @@ function MusicSelector({
       return;
     }
 
+    // Show duration prompt before proceeding
+    setShowDurationPrompt(true);
+  };
+
+  const handleConfirmDuration = async () => {
+    setShowDurationPrompt(false);
     setIsLoading(true);
 
     try {
       const res = await fetch("http://localhost:5000/api/music/suggest-music", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sentiment: sentimentLower }),
+        body: JSON.stringify({ 
+          sentiment: sentiment.toLowerCase(),
+          duration: videoDuration ? parseFloat(videoDuration) : null
+        }),
       });
 
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -87,7 +99,7 @@ function MusicSelector({
     setCurrentTrimInfo(trimInfo); // Store the trim info locally
     setShowTrimmer(false);
 
-    createReelWithAudio(trimInfo); // Create the reel with trimmed audio
+    // createReelWithAudio(trimInfo); // Create the reel with trimmed audio
   };
 
   const handleCancelTrim = () => {
@@ -95,33 +107,33 @@ function MusicSelector({
     setTempSelectedAudio(null);
   };
 
-  const createReelWithAudio = async (trimInfo) => {
-    try {
-      // Send the trimmed audio file info to the backend
-      const response = await fetch("http://localhost:5000/api/create-reel", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoFile: "sample-video.mp4", // Include the video file name here
-          audioFile: trimInfo.audioFile, // Use trimmed audio
-          startTime: trimInfo.startTime, // Start time from trimming
-          endTime: trimInfo.endTime, // End time from trimming
-        }),
-      });
+  // const createReelWithAudio = async (trimInfo) => {
+  //   try {
+  //     // Send the trimmed audio file info to the backend
+  //     const response = await fetch("http://localhost:5000/api/reel/create", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         videoFile: "sample-video.mp4", // Include the video file name here
+  //         audioFile: trimInfo.audioFile, // Use trimmed audio
+  //         startTime: trimInfo.startTime, // Start time from trimming
+  //         endTime: trimInfo.endTime, // End time from trimming
+  //       }),
+  //     });
 
-      const data = await response.json();
-      if (data.success) {
-        console.log("Reel created successfully");
-        // Handle further actions like showing the reel
-      } else {
-        console.error("Error creating reel:", data.message);
-      }
-    } catch (error) {
-      console.error("Error creating reel:", error);
-    }
-  };
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       console.log("Reel created successfully");
+  //       // Handle further actions like showing the reel
+  //     } else {
+  //       console.error("Error creating reel:", data.message);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error creating reel:", error);
+  //   }
+  // };
 
   const formatTimeToMinutes = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
@@ -228,91 +240,118 @@ function MusicSelector({
         </div>
       )}
 
+      {/* Duration Prompt Modal */}
+      {showDurationPrompt && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md mx-auto p-6 w-full">
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Video Duration</h3>
+            <p className="text-gray-600 mb-4">
+              Have you set the time duration for your video?
+            </p>
+           
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDurationPrompt(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDuration}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+              >
+                Yes, Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Music Trimmer Modal */}
-      {/* Music Trimmer Modal with improved styling */}
       {showTrimmer && tempSelectedAudio && (
-          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div 
-              className="relative bg-white rounded-lg shadow-xl max-w-4xl mx-auto my-8"
-              style={{ maxHeight: "calc(100vh - 4rem)" }}
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div 
+            className="relative bg-white rounded-lg shadow-xl max-w-4xl mx-auto my-8"
+            style={{ maxHeight: "calc(100vh - 4rem)" }}
+          >
+            {/* Close button in the top right corner */}
+            <button 
+              onClick={handleCancelTrim}
+              className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700"
+              aria-label="Close"
             >
-              {/* Close button in the top right corner */}
-              <button 
-                onClick={handleCancelTrim}
-                className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-gray-700"
-                aria-label="Close"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              
-              {/* Scrollable container for trimmer content */}
-              <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 4rem)" }}>
-                <MusicTrimmer
-                  selectedAudio={tempSelectedAudio}
-                  onTrimComplete={handleTrimComplete}
-                  onCancel={handleCancelTrim}
-                />
-              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Scrollable container for trimmer content */}
+            <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 4rem)" }}>
+              <MusicTrimmer
+                selectedAudio={tempSelectedAudio}
+                onTrimComplete={handleTrimComplete}
+                onCancel={handleCancelTrim}
+              />
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Selected Music with Trimming */}
-        {selectedAudio && !showTrimmer && (
-          <div className="mt-4">
-            <h3 className="text-lg font-medium">Selected Music: {selectedAudio}</h3>
-            <audio
-              key={`${selectedAudio}-${currentTrimInfo?.startTime}-${currentTrimInfo?.endTime}`}
-              controls
-              ref={(audioElement) => {
-                if (audioElement && currentTrimInfo) {
-                  // Set the current time to the trim start position
-                  audioElement.currentTime = currentTrimInfo.startTime;
+      {/* Selected Music with Trimming */}
+      {selectedAudio && !showTrimmer && (
+        <div className="mt-4">
+          <h3 className="text-lg font-medium">Selected Music: {selectedAudio}</h3>
+          <audio
+            key={`${selectedAudio}-${currentTrimInfo?.startTime}-${currentTrimInfo?.endTime}`}
+            controls
+            ref={(audioElement) => {
+              if (audioElement && currentTrimInfo) {
+                // Set the current time to the trim start position
+                audioElement.currentTime = currentTrimInfo.startTime;
 
-                  // Add event listener to stop playback at end time
-                  audioElement.addEventListener("timeupdate", () => {
-                    if (audioElement.currentTime >= currentTrimInfo.endTime) {
-                      audioElement.pause();
-                    }
-                  });
-                }
+                // Add event listener to stop playback at end time
+                audioElement.addEventListener("timeupdate", () => {
+                  if (audioElement.currentTime >= currentTrimInfo.endTime) {
+                    audioElement.pause();
+                  }
+                });
+              }
+            }}
+            className="mt-1 w-full"
+          >
+            <source src={`http://localhost:5000/music/${selectedAudio}`} type="audio/mp3" />
+            Your browser does not support the audio tag.
+          </audio>
+          <div className="mt-2">
+            {currentTrimInfo && (
+              <p className="text-sm text-gray-600">
+                Trimmed: {formatTimeToMinutes(currentTrimInfo.startTime)} to {formatTimeToMinutes(currentTrimInfo.endTime)}
+              </p>
+            )}
+            <button
+              onClick={() => {
+                setShowTrimmer(true);
+                setTempSelectedAudio(selectedAudio);
               }}
-              className="mt-1 w-full"
+              className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
             >
-              <source src={`http://localhost:5000/music/${selectedAudio}`} type="audio/mp3" />
-              Your browser does not support the audio tag.
-            </audio>
-            <div className="mt-2">
-              {currentTrimInfo && (
-                <p className="text-sm text-gray-600">
-                  Trimmed: {formatTimeToMinutes(currentTrimInfo.startTime)} to {formatTimeToMinutes(currentTrimInfo.endTime)}
-                </p>
-              )}
-              <button
-                onClick={() => {
-                  setShowTrimmer(true);
-                  setTempSelectedAudio(selectedAudio);
-                }}
-                className="mt-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
-              >
-                Re-trim Music
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedAudio(null);
-                  setCurrentTrimInfo(null);
-                  setTrimmedAudioInfo(null);
-                }}
-                className="mt-2 ml-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Remove Selection
-              </button>
-            </div>
+              Re-trim Music
+            </button>
+            <button
+              onClick={() => {
+                setSelectedAudio(null);
+                setCurrentTrimInfo(null);
+                setTrimmedAudioInfo(null);
+              }}
+              className="mt-2 ml-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            >
+              Remove Selection
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
   );
 }
 
